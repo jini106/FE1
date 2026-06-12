@@ -35,15 +35,15 @@ export default function Main() {
           <Text style={styles.menuIcon}>{menuOpen ? "×" : "☰"}</Text>
         </TouchableOpacity>
 
-        <Text style={styles.logo}>Visioneers</Text>
+        <Text style={styles.logo}>Matelier</Text>
 
         <Text style={styles.subtitle}>
-          딥러닝 기반 사용자 맞춤형 실내 공간 디자인 시스템
+          마감재 하나로 달라지는 공간
         </Text>
 
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => showReadyMessage("시안 생성")}
+          onPress={() => router.push("/create-design" as any)}
         >
           <Text style={styles.primaryButtonText}>시안 생성하기</Text>
         </TouchableOpacity>
@@ -128,17 +128,19 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   logo: {
-    fontSize: 34,
+    fontSize: 40,
     fontWeight: "bold",
     textAlign: "center",
-    marginBottom: 10,
-  },
-  subtitle: {
+    marginTop: -45,
+    marginBottom: 12,
+},
+subtitle: {
     textAlign: "center",
     color: "#666",
-    marginBottom: 36,
-    lineHeight: 22,
-  },
+    marginBottom: 54,
+    lineHeight: 24,
+    fontSize: 16,
+},
   primaryButton: {
     backgroundColor: "#222",
     padding: 18,
