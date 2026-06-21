@@ -5,11 +5,13 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from "react-native";
 
 export default function AnalysisResult() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
+
+  // 나중에는 AI 분석 결과에서 받아올 값
+  const detectedWalls = 3;
 
   return (
     <View style={styles.container}>
@@ -33,24 +35,33 @@ export default function AnalysisResult() {
       <View style={styles.resultBox}>
         <Text style={styles.resultTitle}>공간 분석 결과</Text>
 
-        <Text style={styles.resultText}>✓ 벽</Text>
+        <Text style={styles.resultText}>✓ 벽지 1</Text>
+        <Text style={styles.resultText}>✓ 벽지 2</Text>
+
+        {detectedWalls >= 3 && (
+          <Text style={styles.resultText}>✓ 벽지 3</Text>
+        )}
+
         <Text style={styles.resultText}>✓ 바닥</Text>
         <Text style={styles.resultText}>✓ 천장</Text>
-        <Text style={styles.resultText}>✓ 몰딩</Text>
+        <Text style={styles.resultText}>✓ 몰딩 1</Text>
+        <Text style={styles.resultText}>✓ 몰딩 2</Text>
 
-        <Text
-            style={{
-            marginTop: 12,
-            fontWeight: "bold",
-            }}
-        >
-            총 4개 영역 인식 완료
+        <Text style={styles.resultSummary}>
+          벽지 {detectedWalls}개 · 바닥 1개 · 천장 1개 · 몰딩 2개 인식 완료
         </Text>
-</View>
+      </View>
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push("/material-select" as any)}
+        onPress={() =>
+          router.push({
+            pathname: "/material-select",
+            params: {
+              detectedWalls: String(detectedWalls),
+            },
+          } as any)
+        }
       >
         <Text style={styles.buttonText}>다음</Text>
       </TouchableOpacity>
@@ -124,6 +135,11 @@ const styles = StyleSheet.create({
   resultText: {
     color: "#555",
     marginBottom: 6,
+  },
+  resultSummary: {
+    marginTop: 12,
+    fontWeight: "bold",
+    color: "#333",
   },
   button: {
     backgroundColor: "#222",

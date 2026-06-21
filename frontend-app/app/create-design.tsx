@@ -45,7 +45,7 @@ export default function CreateDesign() {
             }
 
             const result = await ImagePicker.launchCameraAsync({
-              allowsEditing: true,
+              allowsEditing: false,
               quality: 1,
             });
 
@@ -74,7 +74,9 @@ export default function CreateDesign() {
         <TouchableOpacity style={styles.optionCard} onPress={takePhoto}>
           <View style={styles.optionTextBox}>
             <Text style={styles.optionTitle}>사진 촬영</Text>
-            <Text style={styles.optionDesc}>카메라로 공간을 직접 촬영합니다.</Text>
+            <Text style={styles.optionDesc}>
+              카메라로 공간을 직접 촬영합니다.
+            </Text>
           </View>
           <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>
@@ -82,7 +84,9 @@ export default function CreateDesign() {
         <TouchableOpacity style={styles.optionCard} onPress={pickImage}>
           <View style={styles.optionTextBox}>
             <Text style={styles.optionTitle}>갤러리에서 선택</Text>
-            <Text style={styles.optionDesc}>갤러리에서 이미지를 선택합니다.</Text>
+            <Text style={styles.optionDesc}>
+              갤러리에서 이미지를 선택한 뒤 편집합니다.
+            </Text>
           </View>
           <Text style={styles.arrow}>›</Text>
         </TouchableOpacity>

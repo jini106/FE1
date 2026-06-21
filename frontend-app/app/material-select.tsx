@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   View,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  Alert,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -143,74 +144,25 @@ function makeBox(area, size, position, color, selectable = true, makeOutline = t
   return mesh;
 }
 
-/* 바닥 */
-makeBox(
-  "floor",
-  { x: ROOM_W, y: 0.08, z: ROOM_D },
-  { x: 0, y: 0, z: 0 },
-  "#b98b5b"
-);
+makeBox("floor", { x: ROOM_W, y: 0.08, z: ROOM_D }, { x: 0, y: 0, z: 0 }, "#b98b5b");
 
-/* 천장 */
-makeBox(
-  "ceilingHidden",
-  { x: ROOM_W, y: 0.06, z: ROOM_D },
-  { x: 0, y: ROOM_H, z: 0 },
-  "#f4efe4",
-  false,
-  false
-);
+makeBox("ceilingHidden", { x: ROOM_W, y: 0.06, z: ROOM_D }, { x: 0, y: ROOM_H, z: 0 }, "#f4efe4", false, false);
 
-/* 왼쪽 벽 */
-makeBox(
-  "wall1",
-  { x: 0.08, y: ROOM_H, z: ROOM_D },
-  { x: -ROOM_W / 2, y: ROOM_H / 2, z: 0 },
-  "#eee3ce"
-);
+makeBox("wall1", { x: 0.08, y: ROOM_H, z: ROOM_D }, { x: -ROOM_W / 2, y: ROOM_H / 2, z: 0 }, "#eee3ce");
 
-/* 오른쪽 벽 */
-makeBox(
-  "wall3",
-  { x: 0.08, y: ROOM_H, z: ROOM_D },
-  { x: ROOM_W / 2, y: ROOM_H / 2, z: 0 },
-  "#eee3ce"
-);
+makeBox("wall3", { x: 0.08, y: ROOM_H, z: ROOM_D }, { x: ROOM_W / 2, y: ROOM_H / 2, z: 0 }, "#eee3ce");
 
-/* 뒤쪽 벽 */
-makeBox(
-  "wall4",
-  { x: ROOM_W, y: ROOM_H, z: 0.08 },
-  { x: 0, y: ROOM_H / 2, z: ROOM_D / 2 },
-  "#eee3ce"
-);
+makeBox("wall4", { x: ROOM_W, y: ROOM_H, z: 0.08 }, { x: 0, y: ROOM_H / 2, z: ROOM_D / 2 }, "#eee3ce");
 
-/* 정면 벽: 문 구멍 */
 const frontZ = -ROOM_D / 2;
 const sideW = (ROOM_W - DOOR_W) / 2;
 
-makeBox(
-  "wall2",
-  { x: sideW, y: ROOM_H, z: 0.08 },
-  { x: -(DOOR_W / 2 + sideW / 2), y: ROOM_H / 2, z: frontZ },
-  "#eee3ce"
-);
+makeBox("wall2", { x: sideW, y: ROOM_H, z: 0.08 }, { x: -(DOOR_W / 2 + sideW / 2), y: ROOM_H / 2, z: frontZ }, "#eee3ce");
 
-makeBox(
-  "wall2",
-  { x: sideW, y: ROOM_H, z: 0.08 },
-  { x: DOOR_W / 2 + sideW / 2, y: ROOM_H / 2, z: frontZ },
-  "#eee3ce"
-);
+makeBox("wall2", { x: sideW, y: ROOM_H, z: 0.08 }, { x: DOOR_W / 2 + sideW / 2, y: ROOM_H / 2, z: frontZ }, "#eee3ce");
 
-makeBox(
-  "wall2",
-  { x: DOOR_W, y: ROOM_H - DOOR_H, z: 0.08 },
-  { x: 0, y: DOOR_H + (ROOM_H - DOOR_H) / 2, z: frontZ },
-  "#eee3ce"
-);
+makeBox("wall2", { x: DOOR_W, y: ROOM_H - DOOR_H, z: 0.08 }, { x: 0, y: DOOR_H + (ROOM_H - DOOR_H) / 2, z: frontZ }, "#eee3ce");
 
-/* 문틀: 세로/가로가 딱 맞물리도록 계산 */
 const frameMat = makeMat("#7a5637");
 const frameZ = frontZ + 0.18;
 
@@ -235,26 +187,10 @@ const rightFrame = new THREE.Mesh(
 rightFrame.position.set(DOOR_W / 2 + FRAME / 2, DOOR_H / 2, frameZ);
 scene.add(rightFrame);
 
-/* 문 너머 공간: 하얀 테두리 안 생기게 outline 없음 */
-makeBox(
-  "wall4",
-  { x: 1.2, y: 2.1, z: 0.08 },
-  { x: 0, y: 1.05, z: frontZ - 1.25 },
-  "#f4efe4",
-  true,
-  false
-);
+makeBox("wall4", { x: 1.2, y: 2.1, z: 0.08 }, { x: 0, y: 1.05, z: frontZ - 1.25 }, "#f4efe4", true, false);
 
-makeBox(
-  "floor",
-  { x: 1.2, y: 0.06, z: 1.0 },
-  { x: 0, y: 0.03, z: frontZ - 0.7 },
-  "#c8a26a",
-  true,
-  false
-);
+makeBox("floor", { x: 1.2, y: 0.06, z: 1.0 }, { x: 0, y: 0.03, z: frontZ - 0.7 }, "#c8a26a", true, false);
 
-/* 몰딩: 코너에서 X자로 겹치지 않게 짧게 끊음 */
 const GAP = 0.18;
 const TOP_Y = ROOM_H - 0.1;
 const BOTTOM_Y = 0.14;
@@ -263,72 +199,24 @@ const MOLD_Z_BACK = ROOM_D / 2 - 0.16;
 const MOLD_X_LEFT = -ROOM_W / 2 + 0.16;
 const MOLD_X_RIGHT = ROOM_W / 2 - 0.16;
 
-/* 상단 몰딩 */
-makeBox(
-  "moldingTop",
-  { x: ROOM_W - GAP * 2, y: 0.06, z: 0.06 },
-  { x: 0, y: TOP_Y, z: MOLD_Z_FRONT },
-  "#f7f4ee"
-);
+makeBox("moldingTop", { x: ROOM_W - GAP * 2, y: 0.06, z: 0.06 }, { x: 0, y: TOP_Y, z: MOLD_Z_FRONT }, "#f7f4ee");
 
-makeBox(
-  "moldingTop",
-  { x: ROOM_W - GAP * 2, y: 0.06, z: 0.06 },
-  { x: 0, y: TOP_Y, z: MOLD_Z_BACK },
-  "#f7f4ee"
-);
+makeBox("moldingTop", { x: ROOM_W - GAP * 2, y: 0.06, z: 0.06 }, { x: 0, y: TOP_Y, z: MOLD_Z_BACK }, "#f7f4ee");
 
-makeBox(
-  "moldingTop",
-  { x: 0.06, y: 0.06, z: ROOM_D - GAP * 2 },
-  { x: MOLD_X_LEFT, y: TOP_Y, z: 0 },
-  "#f7f4ee"
-);
+makeBox("moldingTop", { x: 0.06, y: 0.06, z: ROOM_D - GAP * 2 }, { x: MOLD_X_LEFT, y: TOP_Y, z: 0 }, "#f7f4ee");
 
-makeBox(
-  "moldingTop",
-  { x: 0.06, y: 0.06, z: ROOM_D - GAP * 2 },
-  { x: MOLD_X_RIGHT, y: TOP_Y, z: 0 },
-  "#f7f4ee"
-);
+makeBox("moldingTop", { x: 0.06, y: 0.06, z: ROOM_D - GAP * 2 }, { x: MOLD_X_RIGHT, y: TOP_Y, z: 0 }, "#f7f4ee");
 
-/* 하단 몰딩: 문 위치는 비움 */
-makeBox(
-  "moldingBottom",
-  { x: sideW - 0.18, y: 0.08, z: 0.07 },
-  { x: -(DOOR_W / 2 + sideW / 2), y: BOTTOM_Y, z: MOLD_Z_FRONT },
-  "#d8d4ca"
-);
+makeBox("moldingBottom", { x: sideW - 0.18, y: 0.08, z: 0.07 }, { x: -(DOOR_W / 2 + sideW / 2), y: BOTTOM_Y, z: MOLD_Z_FRONT }, "#d8d4ca");
 
-makeBox(
-  "moldingBottom",
-  { x: sideW - 0.18, y: 0.08, z: 0.07 },
-  { x: DOOR_W / 2 + sideW / 2, y: BOTTOM_Y, z: MOLD_Z_FRONT },
-  "#d8d4ca"
-);
+makeBox("moldingBottom", { x: sideW - 0.18, y: 0.08, z: 0.07 }, { x: DOOR_W / 2 + sideW / 2, y: BOTTOM_Y, z: MOLD_Z_FRONT }, "#d8d4ca");
 
-makeBox(
-  "moldingBottom",
-  { x: ROOM_W - GAP * 2, y: 0.08, z: 0.07 },
-  { x: 0, y: BOTTOM_Y, z: MOLD_Z_BACK },
-  "#d8d4ca"
-);
+makeBox("moldingBottom", { x: ROOM_W - GAP * 2, y: 0.08, z: 0.07 }, { x: 0, y: BOTTOM_Y, z: MOLD_Z_BACK }, "#d8d4ca");
 
-makeBox(
-  "moldingBottom",
-  { x: 0.07, y: 0.08, z: ROOM_D - GAP * 2 },
-  { x: MOLD_X_LEFT, y: BOTTOM_Y, z: 0 },
-  "#d8d4ca"
-);
+makeBox("moldingBottom", { x: 0.07, y: 0.08, z: ROOM_D - GAP * 2 }, { x: MOLD_X_LEFT, y: BOTTOM_Y, z: 0 }, "#d8d4ca");
 
-makeBox(
-  "moldingBottom",
-  { x: 0.07, y: 0.08, z: ROOM_D - GAP * 2 },
-  { x: MOLD_X_RIGHT, y: BOTTOM_Y, z: 0 },
-  "#d8d4ca"
-);
+makeBox("moldingBottom", { x: 0.07, y: 0.08, z: ROOM_D - GAP * 2 }, { x: MOLD_X_RIGHT, y: BOTTOM_Y, z: 0 }, "#d8d4ca");
 
-/* 방 안 고정 카메라 */
 let yaw = 0;
 let pitch = 0;
 let fov = 62;
@@ -452,7 +340,7 @@ window.addEventListener("pointermove", (event) => {
     moved = true;
   }
 
-  yaw -= dx * 0.011;
+  yaw += dx * 0.011;
   pitch -= dy * 0.0025;
 
   lastX = event.clientX;
@@ -496,8 +384,28 @@ window.addEventListener("resize", () => {
 
 export default function MaterialSelect() {
   const webViewRef = useRef<WebView>(null);
+  const { detectedWalls } = useLocalSearchParams<{ detectedWalls?: string }>();
+
+  const wallCount = Math.min(
+    3,
+    Math.max(2, Number(detectedWalls ?? "3") || 3)
+  );
+
+  const maxPointWalls = wallCount === 2 ? 1 : 2;
+  const detectedWallAreas: Area[] =
+    wallCount === 2 ? ["wall1", "wall2"] : ["wall1", "wall2", "wall3"];
+
+  const areaList: Area[] = [
+    "allWalls",
+    ...detectedWallAreas,
+    "floor",
+    "moldingTop",
+    "moldingBottom",
+  ];
+
   const [selectedArea, setSelectedArea] = useState<Area>("allWalls");
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [pointWalls, setPointWalls] = useState<Area[]>([]);
 
   const [colors, setColors] = useState<Record<Area, string>>({
     allWalls: "#eee3ce",
@@ -510,24 +418,55 @@ export default function MaterialSelect() {
     moldingBottom: "#f7f4ee",
   });
 
+  const isWallArea = (area: Area) => area.startsWith("wall");
+  const isDetectedWall = (area: Area) => detectedWallAreas.includes(area);
+
   const getAreaName = (area: Area) => {
     if (area === "allWalls") return "전체 벽";
-    if (area === "wall1") return "벽 1";
-    if (area === "wall2") return "벽 2";
-    if (area === "wall3") return "벽 3";
-    if (area === "wall4") return "벽 4";
+    if (area === "wall1") return "벽지 1";
+    if (area === "wall2") return "벽지 2";
+    if (area === "wall3") return "벽지 3";
+    if (area === "wall4") return "벽지 4";
     if (area === "floor") return "바닥";
     if (area === "moldingTop") return "몰딩 1";
     return "몰딩 2";
   };
 
+  const resetPreviewSelection = () => {
+    webViewRef.current?.injectJavaScript(`
+      window.selectArea("allWalls");
+      true;
+    `);
+  };
+
   const changeArea = (area: Area) => {
+    if (isWallArea(area) && !isDetectedWall(area)) {
+      Alert.alert("안내", `현재 사진에서는 ${getAreaName(area)}가 인식되지 않았습니다.`);
+      setSelectedArea("allWalls");
+      resetPreviewSelection();
+      return;
+    }
+
     setSelectedArea(area);
 
     webViewRef.current?.injectJavaScript(`
       window.selectArea("${area}");
       true;
     `);
+  };
+
+  const handlePreviewSelect = (area: Area) => {
+    if (isWallArea(area) && !isDetectedWall(area)) {
+      Alert.alert(
+        "안내",
+        `현재 사진에서는 ${getAreaName(area)}가 인식되지 않았습니다.`
+      );
+      setSelectedArea("allWalls");
+      resetPreviewSelection();
+      return;
+    }
+
+    setSelectedArea(area);
   };
 
   const selectColor = (color: string) => {
@@ -540,12 +479,45 @@ export default function MaterialSelect() {
         wall3: color,
         wall4: color,
       });
-    } else {
-      setColors({
-        ...colors,
-        [selectedArea]: color,
-      });
+
+      setPointWalls([]);
+
+      webViewRef.current?.injectJavaScript(`
+        window.setAreaColor("allWalls", "${color}");
+        true;
+      `);
+
+      return;
     }
+
+    if (isWallArea(selectedArea)) {
+      if (!isDetectedWall(selectedArea)) {
+        Alert.alert(
+          "안내",
+          `현재 사진에서는 ${getAreaName(selectedArea)}가 인식되지 않았습니다.`
+        );
+        return;
+      }
+
+      const alreadyPointWall = pointWalls.includes(selectedArea);
+
+      if (!alreadyPointWall && pointWalls.length >= maxPointWalls) {
+        Alert.alert(
+          "선택 제한",
+          `벽지 ${wallCount}개 구조에서는 포인트 벽지를 최대 ${maxPointWalls}개까지만 선택할 수 있습니다.`
+        );
+        return;
+      }
+
+      if (!alreadyPointWall) {
+        setPointWalls([...pointWalls, selectedArea]);
+      }
+    }
+
+    setColors({
+      ...colors,
+      [selectedArea]: color,
+    });
 
     webViewRef.current?.injectJavaScript(`
       window.setAreaColor("${selectedArea}", "${color}");
@@ -565,14 +537,14 @@ export default function MaterialSelect() {
       >
         <Text style={styles.title}>마감재 선택</Text>
         <Text style={styles.subtitle}>
-          기본 색상은 전체 벽에 적용되고, 특정 벽을 선택하면 개별 변경할 수 있어요.
+          전체 벽 색상을 먼저 고르고, 포인트 벽지는 최대 {maxPointWalls}개까지 선택할 수 있어요.
         </Text>
 
         <View style={styles.previewCard}>
           <View style={styles.previewHeader}>
             <Text style={styles.previewTitle}>공간 미리보기</Text>
             <Text style={styles.detectText}>
-              벽 4개 · 바닥 1개 · 몰딩 2개 인식
+              벽지 {wallCount}개 · 바닥 1개 · 몰딩 2개 인식
             </Text>
           </View>
 
@@ -588,7 +560,7 @@ export default function MaterialSelect() {
               onTouchCancel={() => setScrollEnabled(true)}
               onMessage={(event) => {
                 const area = event.nativeEvent.data as Area;
-                setSelectedArea(area);
+                handlePreviewSelect(area);
               }}
               style={styles.webView}
             />
@@ -600,18 +572,7 @@ export default function MaterialSelect() {
         </View>
 
         <View style={styles.areaTabs}>
-          {(
-            [
-              "allWalls",
-              "wall1",
-              "wall2",
-              "wall3",
-              "wall4",
-              "floor",
-              "moldingTop",
-              "moldingBottom",
-            ] as Area[]
-          ).map((area) => (
+          {areaList.map((area) => (
             <TouchableOpacity
               key={area}
               style={[
@@ -657,13 +618,27 @@ export default function MaterialSelect() {
 
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>선택한 마감재</Text>
-          <Text style={styles.summaryText}>전체 벽 / 개별 벽 색상 변경 가능</Text>
-          <Text style={styles.summaryText}>바닥 · 몰딩 1 · 몰딩 2 선택 가능</Text>
+          <Text style={styles.summaryText}>
+            포인트 벽지: {pointWalls.length} / {maxPointWalls}개 선택
+          </Text>
+          <Text style={styles.summaryText}>
+            벽지 {wallCount}개 구조 기준 적용
+          </Text>
+          <Text style={styles.summaryText}>
+            바닥 · 몰딩 1 · 몰딩 2 선택 가능
+          </Text>
         </View>
 
         <TouchableOpacity
           style={styles.nextButton}
-          onPress={() => router.push("/result" as any)}
+          onPress={() =>
+            router.push({
+              pathname: "/result",
+              params: {
+                detectedWalls: String(wallCount),
+              },
+            } as any)
+          }
         >
           <Text style={styles.nextButtonText}>다음</Text>
         </TouchableOpacity>

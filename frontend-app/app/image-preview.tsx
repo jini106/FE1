@@ -1,4 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
+import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
@@ -9,6 +11,19 @@ import {
 
 export default function ImagePreview() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
+  const [currentImage, setCurrentImage] = useState(imageUri ?? "");
+
+  const editImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      setCurrentImage(result.assets[0].uri);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -19,20 +34,24 @@ export default function ImagePreview() {
       <Text style={styles.title}>이미지 확인</Text>
       <Text style={styles.subtitle}>선택한 공간 사진을 확인해 주세요.</Text>
 
-      {imageUri ? (
-        <Image source={{ uri: imageUri }} style={styles.previewImage} />
+      {currentImage ? (
+        <Image source={{ uri: currentImage }} style={styles.previewImage} />
       ) : (
         <View style={styles.emptyBox}>
           <Text style={styles.emptyText}>선택된 이미지가 없습니다.</Text>
         </View>
       )}
 
+      <TouchableOpacity style={styles.editButton} onPress={editImage}>
+        <Text style={styles.editButtonText}>사진 편집</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity
         style={styles.button}
         onPress={() =>
           router.push({
             pathname: "/analyzing",
-            params: { imageUri },
+            params: { imageUri: currentImage },
           } as any)
         }
       >
@@ -83,7 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     resizeMode: "cover",
     backgroundColor: "#ddd",
-    marginBottom: 24,
+    marginBottom: 12,
   },
   emptyBox: {
     width: "100%",
@@ -92,12 +111,25 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: "#e5e5e5",
   },
   emptyText: {
     color: "#777",
+  },
+  editButton: {
+    backgroundColor: "white",
+    borderWidth: 1,
+    borderColor: "#ddd",
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  editButtonText: {
+    textAlign: "center",
+    fontWeight: "bold",
+    color: "#444",
   },
   button: {
     backgroundColor: "#222",
