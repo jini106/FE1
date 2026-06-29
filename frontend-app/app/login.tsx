@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Alert,
   Image,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 
 export default function Login() {
@@ -15,9 +17,10 @@ export default function Login() {
   const [password, setPassword] = useState("");
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>로그인</Text>
-      <Text style={styles.subtitle}>Visioneers에 오신 것을 환영합니다.</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Text style={styles.title}>로그인</Text>
+        <Text style={styles.subtitle}>Visioneers에 오신 것을 환영합니다.</Text>
 
       <TextInput
         style={styles.input}
@@ -85,7 +88,8 @@ export default function Login() {
         <Text style={styles.link}>계정이 없나요? 회원가입</Text>
       </TouchableOpacity>
     </View>
-  );
+  </TouchableWithoutFeedback>
+);
 }
 
 const styles = StyleSheet.create({

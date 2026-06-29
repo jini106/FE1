@@ -36,10 +36,7 @@ export default function Main() {
         </TouchableOpacity>
 
         <Text style={styles.logo}>Matelier</Text>
-
-        <Text style={styles.subtitle}>
-          마감재 하나로 달라지는 공간
-        </Text>
+        <Text style={styles.subtitle}>마감재 하나로 달라지는 공간</Text>
 
         <TouchableOpacity
           style={styles.primaryButton}
@@ -133,14 +130,14 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: -45,
     marginBottom: 12,
-},
-subtitle: {
+  },
+  subtitle: {
     textAlign: "center",
     color: "#666",
     marginBottom: 54,
     lineHeight: 24,
     fontSize: 16,
-},
+  },
   primaryButton: {
     backgroundColor: "#222",
     padding: 18,
@@ -170,6 +167,7 @@ subtitle: {
     backgroundColor: "white",
     paddingTop: 95,
     paddingHorizontal: 22,
+    paddingBottom: 54,
     zIndex: 10,
     borderTopLeftRadius: 24,
     borderBottomLeftRadius: 24,
@@ -190,7 +188,7 @@ subtitle: {
   },
   logoutItem: {
     marginTop: "auto",
-    paddingVertical: 24,
+    paddingVertical: 18,
   },
   logoutText: {
     fontSize: 13,

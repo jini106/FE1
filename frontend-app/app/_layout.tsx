@@ -14,6 +14,7 @@ export default function RootLayout() {
       <Stack.Screen name="analysis-result" options={{ headerShown: false }} />
       <Stack.Screen name="material-select" options={{ headerShown: false }} />
       <Stack.Screen name="result" options={{ headerShown: false }} />
+      <Stack.Screen name="area-edit" options={{ headerShown: false }} />
     </Stack>
   );
 }

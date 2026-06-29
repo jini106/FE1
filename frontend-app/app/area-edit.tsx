@@ -5,16 +5,24 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Alert,
   ScrollView,
 } from "react-native";
 
-export default function AnalysisResult() {
+export default function AreaEdit() {
   const { imageUri, detectedWalls } = useLocalSearchParams<{
     imageUri: string;
     detectedWalls?: string;
   }>();
 
   const wallCount = detectedWalls ?? "3";
+
+  const handleTempEdit = () => {
+    Alert.alert(
+      "안내",
+      "영역 직접 수정 기능은 추후 AI 영역 좌표와 연결될 예정입니다."
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -23,9 +31,9 @@ export default function AnalysisResult() {
       </TouchableOpacity>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>분석 결과</Text>
+        <Text style={styles.title}>영역 직접 수정</Text>
         <Text style={styles.subtitle}>
-          AI가 인식한 공간 영역을 확인해 주세요.
+          분석된 영역이 어색하다면 직접 수정할 수 있어요.
         </Text>
 
         {imageUri ? (
@@ -36,45 +44,39 @@ export default function AnalysisResult() {
           </View>
         )}
 
-        <View style={styles.resultBox}>
-          <Text style={styles.resultTitle}>공간 분석 결과</Text>
-          <Text style={styles.resultText}>✓ 벽지</Text>
-          <Text style={styles.resultText}>✓ 바닥</Text>
-          <Text style={styles.resultText}>✓ 천장</Text>
-          <Text style={styles.resultText}>✓ 몰딩</Text>
-          <Text style={styles.resultSummary}>총 4개 영역 인식 완료</Text>
+        <View style={styles.infoBox}>
+          <Text style={styles.infoTitle}>수정 가능한 영역</Text>
+          <Text style={styles.infoText}>✓ 벽지</Text>
+          <Text style={styles.infoText}>✓ 바닥</Text>
+          <Text style={styles.infoText}>✓ 천장</Text>
+          <Text style={styles.infoText}>✓ 몰딩</Text>
         </View>
 
-        <View style={styles.confirmBox}>
-          <Text style={styles.confirmTitle}>공간이 잘 분석되었나요?</Text>
-          <Text style={styles.confirmDesc}>
-            영역이 어색하게 나뉘었다면 직접 수정할 수 있어요.
-          </Text>
-
-          <TouchableOpacity
-            style={styles.button}
-            onPress={() =>
-              router.push({
-                pathname: "/material-select",
-                params: { detectedWalls: wallCount },
-              } as any)
-            }
-          >
-            <Text style={styles.buttonText}>네, 좋아요</Text>
+        <View style={styles.toolBox}>
+          <TouchableOpacity style={styles.toolButton} onPress={handleTempEdit}>
+            <Text style={styles.toolButtonText}>벽지 영역 수정</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() =>
-              router.push({
-                pathname: "/area-edit",
-                params: { imageUri, detectedWalls: wallCount },
-              } as any)
-            }
-          >
-            <Text style={styles.editButtonText}>직접 수정할게요</Text>
+          <TouchableOpacity style={styles.toolButton} onPress={handleTempEdit}>
+            <Text style={styles.toolButtonText}>바닥 영역 수정</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.toolButton} onPress={handleTempEdit}>
+            <Text style={styles.toolButtonText}>몰딩 영역 수정</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() =>
+            router.push({
+              pathname: "/material-select",
+              params: { detectedWalls: wallCount },
+            } as any)
+          }
+        >
+          <Text style={styles.buttonText}>수정 완료</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -97,7 +99,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: "bold",
     textAlign: "center",
     marginTop: 10,
@@ -106,11 +108,12 @@ const styles = StyleSheet.create({
   subtitle: {
     textAlign: "center",
     color: "#777",
-    marginBottom: 24,
+    marginBottom: 22,
+    lineHeight: 21,
   },
   previewImage: {
     width: "100%",
-    height: 260,
+    height: 250,
     borderRadius: 16,
     resizeMode: "cover",
     backgroundColor: "#ddd",
@@ -118,7 +121,7 @@ const styles = StyleSheet.create({
   },
   emptyBox: {
     width: "100%",
-    height: 260,
+    height: 250,
     borderRadius: 16,
     backgroundColor: "white",
     justifyContent: "center",
@@ -130,66 +133,50 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#777",
   },
-  resultBox: {
+  infoBox: {
     backgroundColor: "white",
     borderRadius: 14,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: "#e5e5e5",
     marginBottom: 14,
   },
-  resultTitle: {
+  infoTitle: {
     fontSize: 16,
     fontWeight: "bold",
     marginBottom: 10,
   },
-  resultText: {
+  infoText: {
     color: "#555",
     marginBottom: 6,
   },
-  resultSummary: {
-    marginTop: 12,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  confirmBox: {
+  toolBox: {
     backgroundColor: "white",
     borderRadius: 14,
-    padding: 18,
+    padding: 14,
     borderWidth: 1,
     borderColor: "#e5e5e5",
-    marginBottom: 30,
+    marginBottom: 18,
   },
-  confirmTitle: {
-    fontSize: 17,
+  toolButton: {
+    backgroundColor: "#f3f5f7",
+    padding: 13,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  toolButtonText: {
+    textAlign: "center",
     fontWeight: "bold",
-    marginBottom: 6,
-  },
-  confirmDesc: {
-    color: "#777",
-    fontSize: 13,
-    marginBottom: 14,
+    color: "#333",
   },
   button: {
     backgroundColor: "#222",
-    padding: 15,
+    padding: 16,
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 30,
   },
   buttonText: {
     color: "white",
-    textAlign: "center",
-    fontWeight: "bold",
-  },
-  editButton: {
-    backgroundColor: "white",
-    padding: 15,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  editButtonText: {
-    color: "#333",
     textAlign: "center",
     fontWeight: "bold",
   },

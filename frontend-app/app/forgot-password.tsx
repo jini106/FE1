@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 
 export default function ForgotPassword() {
@@ -27,27 +29,29 @@ export default function ForgotPassword() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>비밀번호 찾기</Text>
-      <Text style={styles.subtitle}>
-        가입한 이메일을 입력하면 비밀번호 재설정 안내를 보내드립니다.
-      </Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Text style={styles.title}>비밀번호 찾기</Text>
+        <Text style={styles.subtitle}>
+          가입한 이메일을 입력하면 비밀번호 재설정 안내를 보내드립니다.
+        </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="이메일"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="이메일"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-        <Text style={styles.buttonText}>재설정 메일 보내기</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
+          <Text style={styles.buttonText}>재설정 메일 보내기</Text>
+        </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/login" as any)}>
-        <Text style={styles.link}>로그인 화면으로 돌아가기</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity onPress={() => router.push("/login" as any)}>
+          <Text style={styles.link}>로그인 화면으로 돌아가기</Text>
+        </TouchableOpacity>
+      </View>
+    </TouchableWithoutFeedback>
   );
 }
 

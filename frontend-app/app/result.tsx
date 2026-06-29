@@ -67,7 +67,7 @@ export default function Result() {
 
         <TouchableOpacity
           style={styles.newButton}
-          onPress={() => router.push("/main" as any)}
+          onPress={() => router.push("/material-select" as any)}
         >
           <Text style={styles.newButtonText}>새 시안 만들기</Text>
         </TouchableOpacity>

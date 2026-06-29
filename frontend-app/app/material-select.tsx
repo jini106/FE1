@@ -534,6 +534,7 @@ export default function MaterialSelect() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         scrollEnabled={scrollEnabled}
+        keyboardShouldPersistTaps="handled"
       >
         <Text style={styles.title}>마감재 선택</Text>
         <Text style={styles.subtitle}>
@@ -556,8 +557,12 @@ export default function MaterialSelect() {
               javaScriptEnabled
               domStorageEnabled
               onTouchStart={() => setScrollEnabled(false)}
-              onTouchEnd={() => setScrollEnabled(true)}
-              onTouchCancel={() => setScrollEnabled(true)}
+              onTouchEnd={() => {
+                setTimeout(() => setScrollEnabled(true), 150);
+              }}
+              onTouchCancel={() => {
+                setTimeout(() => setScrollEnabled(true), 150);
+              }}
               onMessage={(event) => {
                 const area = event.nativeEvent.data as Area;
                 handlePreviewSelect(area);

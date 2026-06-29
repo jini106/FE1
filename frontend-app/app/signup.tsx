@@ -8,6 +8,8 @@ import {
   StyleSheet,
   Alert,
   Image,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 
 export default function Signup() {
@@ -32,77 +34,79 @@ export default function Signup() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>회원가입</Text>
-      <Text style={styles.subtitle}>간단한 정보로 서비스를 시작해보세요.</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <Text style={styles.title}>회원가입</Text>
+        <Text style={styles.subtitle}>간단한 정보로 서비스를 시작해보세요.</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder="이름"
-        value={name}
-        onChangeText={setName}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="이름"
+          value={name}
+          onChangeText={setName}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="이메일"
-        value={email}
-        onChangeText={setEmail}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="이메일"
+          value={email}
+          onChangeText={setEmail}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="비밀번호"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="비밀번호"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="비밀번호 확인"
-        secureTextEntry
-        value={passwordCheck}
-        onChangeText={setPasswordCheck}
-      />
+        <TextInput
+          style={styles.input}
+          placeholder="비밀번호 확인"
+          secureTextEntry
+          value={passwordCheck}
+          onChangeText={setPasswordCheck}
+        />
 
-      <TouchableOpacity style={styles.button} onPress={handleSignup}>
-        <Text style={styles.buttonText}>회원가입</Text>
-      </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleSignup}>
+          <Text style={styles.buttonText}>회원가입</Text>
+        </TouchableOpacity>
 
-      <View style={styles.dividerBox}>
-        <View style={styles.line} />
-        <Text style={styles.dividerText}>SNS 간편 회원가입</Text>
-        <View style={styles.line} />
+        <View style={styles.dividerBox}>
+          <View style={styles.line} />
+          <Text style={styles.dividerText}>SNS 간편 회원가입</Text>
+          <View style={styles.line} />
+        </View>
+
+        <View style={styles.snsRow}>
+          <TouchableOpacity style={styles.socialButton}>
+            <Image
+              source={require("../assets/images/google.png")}
+              style={styles.socialIcon}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.socialButton}>
+            <Image
+              source={require("../assets/images/kakao.png")}
+              style={styles.socialIcon}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.socialButton}>
+            <Image
+              source={require("../assets/images/naver.png")}
+              style={styles.socialIcon}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity onPress={() => router.push("/login" as any)}>
+          <Text style={styles.link}>이미 계정이 있나요? 로그인</Text>
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.snsRow}>
-        <TouchableOpacity style={styles.socialButton}>
-          <Image
-            source={require("../assets/images/google.png")}
-            style={styles.socialIcon}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.socialButton}>
-          <Image
-            source={require("../assets/images/kakao.png")}
-            style={styles.socialIcon}
-          />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.socialButton}>
-          <Image
-            source={require("../assets/images/naver.png")}
-            style={styles.socialIcon}
-          />
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity onPress={() => router.push("/login" as any)}>
-        <Text style={styles.link}>이미 계정이 있나요? 로그인</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
