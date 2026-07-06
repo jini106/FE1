@@ -97,11 +97,15 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 1.6));
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 
-const light = new THREE.DirectionalLight(0xffffff, 1.25);
-light.position.set(2, 5, 3);
+const light = new THREE.DirectionalLight(0xffffff, 1.4);
+light.position.set(3, 6, 2);
 scene.add(light);
+
+const light2 = new THREE.DirectionalLight(0xffeedd, 0.5);
+light2.position.set(-4, 2, -3);
+scene.add(light2);
 
 function makeMat(color) {
   return new THREE.MeshStandardMaterial({
@@ -131,7 +135,7 @@ function makeBox(area, size, position, color, selectable = true, makeOutline = t
 
   if (makeOutline) {
     const edgeGeo = new THREE.EdgesGeometry(geo);
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff });
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x333333 });
     const outline = new THREE.LineSegments(edgeGeo, edgeMat);
     outline.position.copy(mesh.position);
     outline.scale.set(1.004, 1.004, 1.004);
@@ -235,7 +239,7 @@ const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
 function updateCamera() {
-  pitch = Math.max(-0.32, Math.min(0.32, pitch));
+  pitch = Math.max(-0.5, Math.min(0.5, pitch));
 
   camera.fov = fov;
   camera.updateProjectionMatrix();
@@ -386,14 +390,11 @@ export default function MaterialSelect() {
   const webViewRef = useRef<WebView>(null);
   const { detectedWalls } = useLocalSearchParams<{ detectedWalls?: string }>();
 
-  const wallCount = Math.min(
-    3,
-    Math.max(2, Number(detectedWalls ?? "3") || 3)
-  );
+  const wallCount = Math.min(3, Math.max(1, Number(detectedWalls ?? "3") || 3));
+  const maxPointWalls = wallCount === 1 ? 0 : wallCount === 2 ? 1 : 2;
 
-  const maxPointWalls = wallCount === 2 ? 1 : 2;
   const detectedWallAreas: Area[] =
-    wallCount === 2 ? ["wall1", "wall2"] : ["wall1", "wall2", "wall3"];
+    wallCount === 1 ? ["wall1"] : wallCount === 2 ? ["wall1", "wall2"] : ["wall1", "wall2", "wall3"];
 
   const areaList: Area[] = [
     "allWalls",

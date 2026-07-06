@@ -12,13 +12,13 @@ export default function CreateDesign() {
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 1,
     });
 
     if (!result.canceled) {
       router.push({
-        pathname: "/image-preview",
+        pathname: "/image-editor",
         params: { imageUri: result.assets[0].uri },
       } as any);
     }
@@ -51,7 +51,7 @@ export default function CreateDesign() {
 
             if (!result.canceled) {
               router.push({
-                pathname: "/image-preview",
+                pathname: "/image-editor",
                 params: { imageUri: result.assets[0].uri },
               } as any);
             }

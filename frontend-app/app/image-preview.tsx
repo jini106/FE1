@@ -1,6 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import * as ImagePicker from "expo-image-picker";
 import {
   View,
   Text,
@@ -13,16 +12,11 @@ export default function ImagePreview() {
   const { imageUri } = useLocalSearchParams<{ imageUri: string }>();
   const [currentImage, setCurrentImage] = useState(imageUri ?? "");
 
-  const editImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setCurrentImage(result.assets[0].uri);
-    }
+  const editImage = () => {
+    router.push({
+      pathname: "/image-editor",
+      params: { imageUri: currentImage },
+    } as any);
   };
 
   return (
