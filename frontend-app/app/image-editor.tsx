@@ -42,6 +42,7 @@ export default function ImageEditor() {
   const cropBoxRef = useRef(cropBox);
   cropBoxRef.current = cropBox;
   const dragTarget = useRef<DragTarget>(null);
+  const activeTabRef = useRef<"crop" | "rotate" | "brightness">("crop");
   const imageLayout = useRef({ x: 0, y: 0, width: SCREEN_W, height: IMAGE_H });
   const naturalSize = useRef({ width: 0, height: 0 });
   const layoutReady = useRef(false);
@@ -56,20 +57,37 @@ export default function ImageEditor() {
   const savedX = useSharedValue(0);
   const savedY = useSharedValue(0);
 
-  function resetCropToPhoto(areaW?: number, areaH?: number) {
+  // contain 방식에서 사진이 실제로 차지하는 영역을 계산
+  function getPhotoRect(areaW?: number, areaH?: number) {
     const { width: natW, height: natH } = naturalSize.current;
-    if (!natW || !natH) return;
     const iw = areaW ?? imageLayout.current.width;
     const ih = areaH ?? imageLayout.current.height;
-    if (!iw || !ih) return;
+    if (!natW || !natH || !iw || !ih) return null;
     const imgRatio = natW / natH;
     const areaRatio = iw / ih;
     let imgW: number, imgH: number;
     if (imgRatio > areaRatio) { imgW = iw; imgH = iw / imgRatio; }
     else { imgH = ih; imgW = ih * imgRatio; }
-    const offsetX = (iw - imgW) / 2 / iw;
-    const offsetY = (ih - imgH) / 2 / ih;
-    setCropBox({ x: offsetX, y: offsetY, w: imgW / iw, h: imgH / ih });
+    return {
+      offsetX: (iw - imgW) / 2,
+      offsetY: (ih - imgH) / 2,
+      imgW,
+      imgH,
+      iw,
+      ih,
+    };
+  }
+
+  function resetCropToPhoto(areaW?: number, areaH?: number) {
+    const rect = getPhotoRect(areaW, areaH);
+    if (!rect) return;
+    const { offsetX, offsetY, imgW, imgH, iw, ih } = rect;
+    setCropBox({
+      x: offsetX / iw,
+      y: offsetY / ih,
+      w: imgW / iw,
+      h: imgH / ih,
+    });
   }
 
   // 자르기 핸들 감지
@@ -100,27 +118,22 @@ export default function ImageEditor() {
   const cropPan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: (e) => {
-        if (activeTab !== "crop") return false;
+        if (activeTabRef.current !== "crop") return false;
         const lx = e.nativeEvent.pageX - imageLayout.current.x;
         const ly = e.nativeEvent.pageY - imageLayout.current.y;
         const target = getDragTarget(lx, ly);
         dragTarget.current = target;
         return target !== null;
       },
-      onMoveShouldSetPanResponder: () => activeTab === "crop" && dragTarget.current !== null,
+      onMoveShouldSetPanResponder: () => activeTabRef.current === "crop" && dragTarget.current !== null,
       onPanResponderMove: (e) => {
-        const iw = imageLayout.current.width;
-        const ih = imageLayout.current.height;
-        const { width: natW, height: natH } = naturalSize.current;
-        const imgRatio = natW && natH ? natW / natH : 1;
-        const areaRatio = iw / ih;
-        let imgW: number, imgH: number;
-        if (imgRatio > areaRatio) { imgW = iw; imgH = iw / imgRatio; }
-        else { imgH = ih; imgW = ih * imgRatio; }
-        const minX = (iw - imgW) / 2 / iw;
-        const minY = (ih - imgH) / 2 / ih;
-        const maxX = minX + imgW / iw;
-        const maxY = minY + imgH / ih;
+        const rect = getPhotoRect();
+        if (!rect) return;
+        const { offsetX, offsetY, imgW, imgH, iw, ih } = rect;
+        const minX = offsetX / iw;
+        const minY = offsetY / ih;
+        const maxX = (offsetX + imgW) / iw;
+        const maxY = (offsetY + imgH) / ih;
         const lx = Math.max(minX, Math.min(maxX, (e.nativeEvent.pageX - imageLayout.current.x) / iw));
         const ly = Math.max(minY, Math.min(maxY, (e.nativeEvent.pageY - imageLayout.current.y) / ih));
         const b = cropBoxRef.current;
@@ -178,18 +191,13 @@ export default function ImageEditor() {
         savedY.value = 0;
       } else {
         // 줌 후 위치가 범위 밖이면 보정
-        const { width: natW, height: natH } = naturalSize.current;
-        const areaW = imageLayout.current.width || SCREEN_W;
-        const areaH = imageLayout.current.height || IMAGE_H;
-        const imgRatio = natW && natH ? natW / natH : areaW / areaH;
-        const areaRatio = areaW / areaH;
-        let imgW: number, imgH: number;
-        if (imgRatio > areaRatio) { imgW = areaW; imgH = areaW / imgRatio; }
-        else { imgH = areaH; imgW = areaH * imgRatio; }
+        const rect = getPhotoRect();
+        if (!rect) return;
+        const { imgW, imgH, iw, ih } = rect;
         const scaledW = imgW * scale.value;
         const scaledH = imgH * scale.value;
-        const maxTX = Math.max(0, (scaledW - areaW) / 2);
-        const maxTY = Math.max(0, (scaledH - areaH) / 2);
+        const maxTX = Math.max(0, (scaledW - iw) / 2);
+        const maxTY = Math.max(0, (scaledH - ih) / 2);
         translateX.value = withSpring(Math.max(-maxTX, Math.min(maxTX, translateX.value)));
         translateY.value = withSpring(Math.max(-maxTY, Math.min(maxTY, translateY.value)));
         savedX.value = translateX.value;
@@ -203,21 +211,13 @@ export default function ImageEditor() {
     .onUpdate((e) => {
       if (savedScale.value <= 1) return;
 
-      // 사진이 contain으로 표시되는 실제 크기 계산
-      const { width: natW, height: natH } = naturalSize.current;
-      const areaW = imageLayout.current.width || SCREEN_W;
-      const areaH = imageLayout.current.height || IMAGE_H;
-      const imgRatio = natW && natH ? natW / natH : areaW / areaH;
-      const areaRatio = areaW / areaH;
-      let imgW: number, imgH: number;
-      if (imgRatio > areaRatio) { imgW = areaW; imgH = areaW / imgRatio; }
-      else { imgH = areaH; imgW = areaH * imgRatio; }
-
-      // 확대된 사진 크기 기준으로 최대 이동 범위 계산
+      const rect = getPhotoRect();
+      if (!rect) return;
+      const { imgW, imgH, iw, ih } = rect;
       const scaledW = imgW * savedScale.value;
       const scaledH = imgH * savedScale.value;
-      const maxTX = Math.max(0, (scaledW - areaW) / 2);
-      const maxTY = Math.max(0, (scaledH - areaH) / 2);
+      const maxTX = Math.max(0, (scaledW - iw) / 2);
+      const maxTY = Math.max(0, (scaledH - ih) / 2);
 
       translateX.value = Math.max(-maxTX, Math.min(maxTX, savedX.value + e.translationX));
       translateY.value = Math.max(-maxTY, Math.min(maxTY, savedY.value + e.translationY));
@@ -323,12 +323,14 @@ export default function ImageEditor() {
             const { width, height } = e.nativeEvent.layout;
             imageLayout.current = { ...imageLayout.current, width, height };
             layoutReady.current = true;
+            // pageX, pageY는 measure로 따로 업데이트
             if (naturalSize.current.width) resetCropToPhoto(width, height);
           }}
           ref={(ref: any) => {
             if (ref) {
-              ref.measure((_x: number, _y: number, w: number, h: number, pageX: number, pageY: number) => {
-                imageLayout.current = { x: pageX, y: pageY, width: w, height: h };
+              // width/height는 onLayout이 더 정확하므로 pageX, pageY만 업데이트
+              ref.measure((_x: number, _y: number, _w: number, _h: number, pageX: number, pageY: number) => {
+                imageLayout.current = { ...imageLayout.current, x: pageX, y: pageY };
               });
             }
           }}
@@ -339,7 +341,10 @@ export default function ImageEditor() {
             onLoad={(e: any) => {
               const { width, height } = e.nativeEvent.source;
               naturalSize.current = { width, height };
-              if (layoutReady.current) resetCropToPhoto();
+              // 레이아웃이 완전히 잡힌 후 계산되도록 딜레이
+              setTimeout(() => {
+                resetCropToPhoto();
+              }, 50);
             }}
           />
 
@@ -374,7 +379,7 @@ export default function ImageEditor() {
             <TouchableOpacity
               key={tab}
               style={[styles.tab, activeTab === tab && styles.activeTab]}
-              onPress={() => setActiveTab(tab)}
+              onPress={() => { setActiveTab(tab); activeTabRef.current = tab; }}
             >
               <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
                 {tab === "crop" ? "자르기" : tab === "rotate" ? "회전" : "밝기"}

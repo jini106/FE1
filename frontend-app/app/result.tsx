@@ -10,7 +10,12 @@ import {
 
 export default function Result() {
   const handleSave = () => {
-    Alert.alert("저장 완료", "시안이 저장되었습니다.");
+    Alert.alert("저장 완료", "시안이 저장되었습니다.", [
+      {
+        text: "확인",
+        onPress: () => router.replace("/main" as any),
+      },
+    ]);
   };
 
   return (

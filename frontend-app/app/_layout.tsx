@@ -16,6 +16,8 @@ export default function RootLayout() {
       <Stack.Screen name="result" options={{ headerShown: false }} />
       <Stack.Screen name="area-edit" options={{ headerShown: false }} />
       <Stack.Screen name="image-editor" options={{ headerShown: false }} />
+      <Stack.Screen name="saved-designs" options={{ headerShown: false }} />
+      <Stack.Screen name="compare-designs" options={{ headerShown: false }} />
     </Stack>
   );
 }

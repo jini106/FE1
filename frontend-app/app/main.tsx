@@ -66,7 +66,7 @@ export default function Main() {
 
         <TouchableOpacity
           style={styles.drawerItem}
-          onPress={() => showReadyMessage("저장된 시안 목록")}
+          onPress={() => { toggleMenu(); router.push("/saved-designs" as any); }}
         >
           <Text style={styles.drawerText}>저장된 시안 목록</Text>
         </TouchableOpacity>
