@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 360,
     borderRadius: 16,
-    resizeMode: "cover",
+    resizeMode: "contain",
     backgroundColor: "#ddd",
     marginBottom: 12,
   },

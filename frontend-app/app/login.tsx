@@ -109,18 +109,6 @@ export default function Login() {
               style={styles.socialIcon}
             />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={require("../assets/images/kakao.png")}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={require("../assets/images/naver.png")}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={() => router.push("/signup" as any)}>

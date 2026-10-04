@@ -262,14 +262,17 @@ export default function ImageEditor() {
       const iw = imageLayout.current.width;
       const ih = imageLayout.current.height;
       if (cropBox.x > 0.01 || cropBox.y > 0.01 || cropBox.w < 0.99 || cropBox.h < 0.99) {
-        actions.push({
-          crop: {
-            originX: Math.round(cropBox.x * iw),
-            originY: Math.round(cropBox.y * ih),
-            width: Math.round(cropBox.w * iw),
-            height: Math.round(cropBox.h * ih),
-          },
-        });
+        // 실제 이미지 크기를 기준으로 자르기 좌표 계산
+        const { width: natW, height: natH } = naturalSize.current;
+        const baseW = natW || iw;
+        const baseH = natH || ih;
+        const originX = Math.max(0, Math.round(cropBox.x * baseW));
+        const originY = Math.max(0, Math.round(cropBox.y * baseH));
+        const cropW = Math.min(baseW - originX, Math.round(cropBox.w * baseW));
+        const cropH = Math.min(baseH - originY, Math.round(cropBox.h * baseH));
+        if (cropW > 0 && cropH > 0) {
+          actions.push({ crop: { originX, originY, width: cropW, height: cropH } });
+        }
       }
       if (rotation !== 0) actions.push({ rotate: rotation });
       const result = await ImageManipulator.manipulateAsync(

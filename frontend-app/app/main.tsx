@@ -1,31 +1,41 @@
 import { router } from "expo-router";
 import { useRef, useState } from "react";
+import * as SecureStore from "expo-secure-store";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Animated,
+  Modal,
+  Switch,
 } from "react-native";
 
 export default function Main() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [settingsVisible, setSettingsVisible] = useState(false);
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
   const slideAnim = useRef(new Animated.Value(260)).current;
-
-  const showReadyMessage = (title: string) => {
-    Alert.alert("안내", `${title} 기능은 추후 구현 예정입니다.`);
-  };
 
   const toggleMenu = () => {
     const nextOpen = !menuOpen;
     setMenuOpen(nextOpen);
-
     Animated.timing(slideAnim, {
       toValue: nextOpen ? 0 : 260,
       duration: 250,
       useNativeDriver: true,
     }).start();
+  };
+
+  const openSettings = () => {
+    toggleMenu();
+    setTimeout(() => setSettingsVisible(true), 280);
+  };
+
+  const handleLogout = async () => {
+    await SecureStore.deleteItemAsync("userEmail");
+    await SecureStore.deleteItemAsync("userToken");
+    router.replace("/login" as any);
   };
 
   return (
@@ -55,12 +65,7 @@ export default function Main() {
       )}
 
       <Animated.View
-        style={[
-          styles.drawer,
-          {
-            transform: [{ translateX: slideAnim }],
-          },
-        ]}
+        style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}
       >
         <Text style={styles.drawerTitle}>MENU</Text>
 
@@ -73,39 +78,90 @@ export default function Main() {
 
         <TouchableOpacity
           style={styles.drawerItem}
-          onPress={() => showReadyMessage("마이페이지")}
+          onPress={() => { toggleMenu(); router.push("/mypage" as any); }}
         >
           <Text style={styles.drawerText}>마이페이지</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.drawerItem}
-          onPress={() => showReadyMessage("환경설정")}
+          onPress={openSettings}
         >
           <Text style={styles.drawerText}>환경설정</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.logoutItem}
-          onPress={() => router.push("/login" as any)}
+          onPress={handleLogout}
         >
           <Text style={styles.logoutText}>로그아웃</Text>
         </TouchableOpacity>
       </Animated.View>
+
+      {/* 환경설정 모달 */}
+      <Modal
+        visible={settingsVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSettingsVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setSettingsVisible(false)}
+        >
+          <View style={styles.modalBox} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>환경설정</Text>
+
+            {/* 알림 */}
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>알림</Text>
+              <Switch
+                value={notificationEnabled}
+                onValueChange={setNotificationEnabled}
+                trackColor={{ false: "#ddd", true: "#222" }}
+                thumbColor="white"
+              />
+            </View>
+
+            <View style={styles.modalDivider} />
+
+            {/* 로그아웃 */}
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => { setSettingsVisible(false); handleLogout(); }}
+            >
+              <Text style={styles.settingLabel}>로그아웃</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <View style={styles.modalDivider} />
+
+            {/* 회원 탈퇴 */}
+            <TouchableOpacity
+              style={styles.settingRow}
+              onPress={() => setSettingsVisible(false)}
+            >
+              <Text style={[styles.settingLabel, { color: "#e55" }]}>회원 탈퇴</Text>
+              <Text style={styles.settingArrow}>›</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalClose}
+              onPress={() => setSettingsVisible(false)}
+            >
+              <Text style={styles.modalCloseText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: "#f3f5f7",
-  },
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
+  root: { flex: 1, backgroundColor: "#f3f5f7" },
+  container: { flex: 1, padding: 24, justifyContent: "center" },
   menuButton: {
     position: "absolute",
     top: 55,
@@ -120,10 +176,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#e5e5e5",
   },
-  menuIcon: {
-    fontSize: 26,
-    fontWeight: "bold",
-  },
+  menuIcon: { fontSize: 26, fontWeight: "bold" },
   logo: {
     fontSize: 40,
     fontWeight: "bold",
@@ -138,31 +191,17 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontSize: 16,
   },
-  primaryButton: {
-    backgroundColor: "#222",
-    padding: 18,
-    borderRadius: 14,
-  },
-  primaryButtonText: {
-    color: "white",
-    fontSize: 17,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
+  primaryButton: { backgroundColor: "#222", padding: 18, borderRadius: 14 },
+  primaryButtonText: { color: "white", fontSize: 17, fontWeight: "bold", textAlign: "center" },
   overlay: {
     position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: "rgba(0,0,0,0.18)",
     zIndex: 5,
   },
   drawer: {
     position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
+    top: 0, right: 0, bottom: 0,
     width: 260,
     backgroundColor: "white",
     paddingTop: 95,
@@ -172,26 +211,41 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderBottomLeftRadius: 24,
   },
-  drawerTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 30,
+  drawerTitle: { fontSize: 24, fontWeight: "bold", marginBottom: 30 },
+  drawerItem: { paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  drawerText: { fontSize: 16, fontWeight: "600" },
+  logoutItem: { marginTop: "auto", paddingVertical: 18 },
+  logoutText: { fontSize: 13, color: "#777" },
+  // 모달
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
   },
-  drawerItem: {
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
+  modalBox: {
+    backgroundColor: "white",
+    borderRadius: 20,
+    padding: 24,
+    width: "100%",
   },
-  drawerText: {
-    fontSize: 16,
-    fontWeight: "600",
+  modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 20, color: "#222" },
+  settingRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 14,
   },
-  logoutItem: {
-    marginTop: "auto",
-    paddingVertical: 18,
+  settingLabel: { fontSize: 16, color: "#222" },
+  settingArrow: { fontSize: 22, color: "#bbb" },
+  modalDivider: { height: 1, backgroundColor: "#f0f0f0" },
+  modalClose: {
+    marginTop: 20,
+    backgroundColor: "#f3f5f7",
+    borderRadius: 10,
+    padding: 14,
+    alignItems: "center",
   },
-  logoutText: {
-    fontSize: 13,
-    color: "#777",
-  },
+  modalCloseText: { fontSize: 15, fontWeight: "bold", color: "#555" },
 });

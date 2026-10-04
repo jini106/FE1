@@ -20,6 +20,86 @@ type Area =
   | "moldingTop"
   | "moldingBottom";
 
+// 공간 조건 기반 추천 더미 데이터 — 서버 연동 시 API 호출로 교체
+const RECOMMENDATIONS = [
+  {
+    id: "bright",
+    tag: "밝은 공간 추천",
+    desc: "채광이 좋은 공간에 어울리는 따뜻한 조합",
+    colors: {
+      allWalls: "#eee3ce", wall1: "#eee3ce", wall2: "#eee3ce",
+      wall3: "#eee3ce", wall4: "#eee3ce",
+      floor: "#b98b5b", moldingTop: "#f7f4ee", moldingBottom: "#f7f4ee",
+    },
+    preview: ["#eee3ce", "#b98b5b", "#f7f4ee"],
+  },
+  {
+    id: "cozy",
+    tag: "아늑한 공간 추천",
+    desc: "좁은 공간을 넓어 보이게 하는 밝은 조합",
+    colors: {
+      allWalls: "#ffffff", wall1: "#ffffff", wall2: "#ffffff",
+      wall3: "#ffffff", wall4: "#ffffff",
+      floor: "#c8b89a", moldingTop: "#f4efe4", moldingBottom: "#f4efe4",
+    },
+    preview: ["#ffffff", "#c8b89a", "#f4efe4"],
+  },
+  {
+    id: "modern",
+    tag: "모던 스타일 추천",
+    desc: "세련된 느낌의 대비감 있는 조합",
+    colors: {
+      allWalls: "#cfcfc9", wall1: "#cfcfc9", wall2: "#cfcfc9",
+      wall3: "#cfcfc9", wall4: "#cfcfc9",
+      floor: "#4a4a4a", moldingTop: "#ffffff", moldingBottom: "#ffffff",
+    },
+    preview: ["#cfcfc9", "#4a4a4a", "#ffffff"],
+  },
+];
+
+// 사용자 취향 학습 기반 추천 더미 데이터 — 서버 연동 시 사용자 이력 기반으로 교체
+const USER_PREFERENCE = {
+  tone: "웜톤",
+  style: "내추럴",
+  frequentColors: ["#eee3ce", "#b98b5b", "#f7f4ee"],
+};
+
+const USER_RECOMMENDATIONS = [
+  {
+    id: "user1",
+    tag: "자주 선택한 색상 기반",
+    desc: "웜톤 계열을 선호하는 취향에 맞춘 조합",
+    colors: {
+      allWalls: "#e8dcc8", wall1: "#e8dcc8", wall2: "#e8dcc8",
+      wall3: "#e8dcc8", wall4: "#e8dcc8",
+      floor: "#a07850", moldingTop: "#f5f0e8", moldingBottom: "#f5f0e8",
+    },
+    preview: ["#e8dcc8", "#a07850", "#f5f0e8"],
+  },
+  {
+    id: "user2",
+    tag: "내추럴 스타일 추천",
+    desc: "선호 스타일 기반의 자연스러운 조합",
+    colors: {
+      allWalls: "#f0ebe0", wall1: "#f0ebe0", wall2: "#f0ebe0",
+      wall3: "#f0ebe0", wall4: "#f0ebe0",
+      floor: "#c4a882", moldingTop: "#faf7f2", moldingBottom: "#faf7f2",
+    },
+    preview: ["#f0ebe0", "#c4a882", "#faf7f2"],
+  },
+  {
+    id: "user3",
+    tag: "최근 저장 시안 기반",
+    desc: "이전에 저장한 시안과 비슷한 톤의 조합",
+    colors: {
+      allWalls: "#ddd5c4", wall1: "#ddd5c4", wall2: "#ddd5c4",
+      wall3: "#ddd5c4", wall4: "#ddd5c4",
+      floor: "#8b6f4e", moldingTop: "#eeebe4", moldingBottom: "#eeebe4",
+    },
+    preview: ["#ddd5c4", "#8b6f4e", "#eeebe4"],
+  },
+];
+
 const colorOptions = [
   { name: "퓨어 화이트", value: "#ffffff" },
   { name: "오프화이트", value: "#f7f4ee" },
@@ -90,14 +170,14 @@ const camera = new THREE.PerspectiveCamera(
   1000
 );
 
-camera.position.set(0, 1.25, 0.9);
+camera.position.set(0, 1.25, 0.3);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+scene.add(new THREE.AmbientLight(0xffffff, 1.4));
 
 const light = new THREE.DirectionalLight(0xffffff, 1.4);
 light.position.set(3, 6, 2);
@@ -190,6 +270,12 @@ const rightFrame = new THREE.Mesh(
 );
 rightFrame.position.set(DOOR_W / 2 + FRAME / 2, DOOR_H / 2, frameZ);
 scene.add(rightFrame);
+
+// 문 안쪽 흰색으로 채워서 바닥/벽이 비쳐 보이지 않도록
+const doorFillMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9, metalness: 0 });
+const doorFill = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W - 0.01, DOOR_H - 0.01, 0.1), doorFillMat);
+doorFill.position.set(0, DOOR_H / 2, frontZ - 0.02);
+scene.add(doorFill);
 
 makeBox("wall4", { x: 1.2, y: 2.1, z: 0.08 }, { x: 0, y: 1.05, z: frontZ - 1.25 }, "#f4efe4", true, false);
 
@@ -470,6 +556,23 @@ export default function MaterialSelect() {
     setSelectedArea(area);
   };
 
+  const applyRecommendation = (rec: typeof RECOMMENDATIONS[0]) => {
+    setColors(rec.colors as any);
+    setPointWalls([]);
+    setSelectedArea("allWalls");
+    webViewRef.current?.injectJavaScript(`
+      window.setAreaColor("allWalls", "${rec.colors.allWalls}");
+      window.setAreaColor("wall1", "${rec.colors.allWalls}");
+      window.setAreaColor("wall2", "${rec.colors.allWalls}");
+      window.setAreaColor("wall3", "${rec.colors.allWalls}");
+      window.setAreaColor("wall4", "${rec.colors.allWalls}");
+      window.setAreaColor("floor", "${rec.colors.floor}");
+      window.setAreaColor("moldingTop", "${rec.colors.moldingTop}");
+      window.setAreaColor("moldingBottom", "${rec.colors.moldingBottom}");
+      true;
+    `);
+  };
+
   const selectColor = (color: string) => {
     if (selectedArea === "allWalls") {
       setColors({
@@ -537,7 +640,7 @@ export default function MaterialSelect() {
         scrollEnabled={scrollEnabled}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>마감재 선택</Text>
+        <Text style={styles.title}>직접 마감재 조합</Text>
         <Text style={styles.subtitle}>
           전체 벽 색상을 먼저 고르고, 포인트 벽지는 최대 {maxPointWalls}개까지 선택할 수 있어요.
         </Text>
@@ -599,6 +702,57 @@ export default function MaterialSelect() {
           ))}
         </View>
 
+        <Text style={styles.sectionTitle}>추천 조합</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {RECOMMENDATIONS.map((rec) => (
+            <TouchableOpacity
+              key={rec.id}
+              style={styles.recCard}
+              onPress={() => applyRecommendation(rec)}
+            >
+              <Text style={styles.recTag}>{rec.tag}</Text>
+              <Text style={styles.recDesc}>{rec.desc}</Text>
+              <View style={styles.recPreview}>
+                {rec.preview.map((c, i) => (
+                  <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                ))}
+                <Text style={styles.recApply}>적용 →</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* 사용자 취향 기반 추천 섹션 */}
+        <View style={styles.preferenceHeader}>
+          <Text style={styles.sectionTitle}>내 취향 기반 추천</Text>
+          <View style={styles.preferenceBadgeRow}>
+            <View style={styles.preferenceBadge}>
+              <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.tone}</Text>
+            </View>
+            <View style={styles.preferenceBadge}>
+              <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.style}</Text>
+            </View>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+          {USER_RECOMMENDATIONS.map((rec) => (
+            <TouchableOpacity
+              key={rec.id}
+              style={styles.recCard}
+              onPress={() => applyRecommendation(rec)}
+            >
+              <Text style={styles.recTag}>{rec.tag}</Text>
+              <Text style={styles.recDesc}>{rec.desc}</Text>
+              <View style={styles.recPreview}>
+                {rec.preview.map((c, i) => (
+                  <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                ))}
+                <Text style={styles.recApply}>적용 →</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <Text style={styles.sectionTitle}>
           {getAreaName(selectedArea)} 마감재 선택
         </Text>
@@ -624,15 +778,23 @@ export default function MaterialSelect() {
 
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>선택한 마감재</Text>
-          <Text style={styles.summaryText}>
-            포인트 벽지: {pointWalls.length} / {maxPointWalls}개 선택
+          <Text style={styles.summarySubtitle}>
+            포인트 벽지 {pointWalls.length}/{maxPointWalls}개 · 벽지 {wallCount}개 구조
           </Text>
-          <Text style={styles.summaryText}>
-            벽지 {wallCount}개 구조 기준 적용
-          </Text>
-          <Text style={styles.summaryText}>
-            바닥 · 몰딩 1 · 몰딩 2 선택 가능
-          </Text>
+          {[
+            { label: "전체 벽", area: "allWalls" as Area },
+            { label: "바닥", area: "floor" as Area },
+            { label: "몰딩 상단", area: "moldingTop" as Area },
+            { label: "몰딩 하단", area: "moldingBottom" as Area },
+          ].map(({ label, area }) => (
+            <View key={area} style={styles.summaryRow}>
+              <View style={[styles.summaryColorBox, { backgroundColor: colors[area] || "#eee", borderColor: colors[area] === "#ffffff" ? "#ddd" : "transparent" }]} />
+              <Text style={styles.summaryLabel}>{label}</Text>
+              <Text style={styles.summaryValue}>
+                {colorOptions.find((c) => c.value === colors[area])?.name ?? colors[area]}
+              </Text>
+            </View>
+          ))}
         </View>
 
         <TouchableOpacity
@@ -789,6 +951,93 @@ const styles = StyleSheet.create({
   summaryText: {
     color: "#555",
     marginBottom: 5,
+  },
+  preferenceHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  preferenceBadgeRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  preferenceBadge: {
+    backgroundColor: "#222",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  preferenceBadgeText: {
+    color: "white",
+    fontSize: 11,
+    fontWeight: "bold",
+  },
+  recCard: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 14,
+    marginRight: 12,
+    width: 200,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  recTag: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 4,
+  },
+  recDesc: {
+    fontSize: 11,
+    color: "#777",
+    marginBottom: 10,
+    lineHeight: 16,
+  },
+  recPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  recDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 1,
+  },
+  recApply: {
+    marginLeft: "auto",
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#555",
+  },
+  summarySubtitle: {
+    fontSize: 12,
+    color: "#999",
+    marginBottom: 12,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+    gap: 10,
+  },
+  summaryColorBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: "#555",
+    width: 70,
+  },
+  summaryValue: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#222",
+    flex: 1,
   },
   nextButton: {
     backgroundColor: "#222",

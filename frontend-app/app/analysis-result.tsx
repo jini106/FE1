@@ -55,8 +55,8 @@ export default function AnalysisResult() {
             style={styles.button}
             onPress={() =>
               router.push({
-                pathname: "/material-select",
-                params: { detectedWalls: wallCount },
+                pathname: "/design-option",
+                params: { imageUri, detectedWalls: wallCount },
               } as any)
             }
           >

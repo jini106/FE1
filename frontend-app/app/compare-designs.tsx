@@ -109,7 +109,7 @@ export default function CompareDesigns() {
                 {designs.map((design) => {
                   const color = design.colors.find((c) => c.label === label);
                   return (
-                    <View key={design.id} style={[styles.tableCell, { width: cardW }]}>
+                    <View key={design.id} style={[styles.tableCell, { flex: 1 }]}>
                       <View
                         style={[
                           styles.tableColorBox,
@@ -214,11 +214,13 @@ const styles = StyleSheet.create({
   },
   tableColors: {
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
+    flex: 1,
   },
   tableCell: {
     alignItems: "center",
     gap: 6,
+    overflow: "hidden",
   },
   tableColorBox: {
     width: "100%",
@@ -226,6 +228,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: "#ddd",
+    maxWidth: "100%",
   },
   tableColorValue: {
     fontSize: 11,
