@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useRef, useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -56,6 +57,9 @@ const RECOMMENDATIONS = [
     preview: ["#cfcfc9", "#4a4a4a", "#ffffff"],
   },
 ];
+
+// 시안 이력 여부 더미 — 서버 연동 시 DB 조회로 교체
+const HAS_PREVIOUS_DESIGNS = true; // false로 바꾸면 취향 알아보기 화면 확인 가능
 
 // 사용자 취향 학습 기반 추천 더미 데이터 — 서버 연동 시 사용자 이력 기반으로 교체
 const USER_PREFERENCE = {
@@ -386,6 +390,82 @@ window.selectArea = function(area) {
   selectObject(area);
 };
 
+// wall2 박스들의 전체 앞벽 기준 UV 오프셋 계산
+// wall2는 3개 박스: 왼쪽(sideW x ROOM_H), 오른쪽(sideW x ROOM_H), 위(DOOR_W x (ROOM_H-DOOR_H))
+// 전체 앞벽 크기(ROOM_W x ROOM_H)에서 각 박스 위치를 비율로 환산해 UV 보정
+function applyTextureWithUV(obj, texture, repeat, wallName) {
+  const cloned = texture.clone();
+  cloned.wrapS = THREE.RepeatWrapping;
+  cloned.wrapT = THREE.RepeatWrapping;
+  cloned.needsUpdate = true;
+
+  if (wallName === "wall2") {
+    const totalW = ROOM_W;
+    const totalH = ROOM_H;
+    const px = obj.position.x;
+    const py = obj.position.y;
+    const geo = obj.geometry;
+    const params = geo.parameters;
+    const boxW = params.width;
+    const boxH = params.height;
+
+    // 전체 벽 기준 반복 스케일
+    cloned.repeat.set(repeat * (boxW / totalW), repeat * (boxH / totalH));
+    // 전체 벽 기준 오프셋 (왼쪽 하단이 0,0)
+    cloned.offset.set(
+      ((px - boxW / 2) + totalW / 2) / totalW * repeat,
+      (py - boxH / 2) / totalH * repeat
+    );
+  } else {
+    cloned.repeat.set(repeat, repeat);
+    cloned.offset.set(0, 0);
+  }
+
+  obj.material.map = cloned;
+  obj.material.color.set("#ffffff");
+  obj.material.needsUpdate = true;
+}
+
+// 텍스처 적용 — base64 이미지 + 반복 횟수
+window.setAreaTexture = function(area, base64, repeat) {
+  const loader = new THREE.TextureLoader();
+  const texture = loader.load(base64, function() {
+    const applyTexture = function(wallName) {
+      if (objects[wallName]) {
+        objects[wallName].forEach(function(obj) {
+          applyTextureWithUV(obj, texture, repeat, wallName);
+        });
+      }
+    };
+
+    if (area === "allWalls") {
+      ["wall1", "wall2", "wall3", "wall4"].forEach(applyTexture);
+    } else {
+      applyTexture(area);
+    }
+  });
+};
+
+// 텍스처 반복 크기만 변경
+window.setTextureRepeat = function(area, repeat) {
+  const updateRepeat = function(wallName) {
+    if (objects[wallName]) {
+      objects[wallName].forEach(function(obj) {
+        if (obj.material.map) {
+          applyTextureWithUV(obj, obj.material.map.source ? obj.material.map : obj.material.map, repeat, wallName);
+          obj.material.needsUpdate = true;
+        }
+      });
+    }
+  };
+
+  if (area === "allWalls") {
+    ["wall1", "wall2", "wall3", "wall4"].forEach(updateRepeat);
+  } else {
+    updateRepeat(area);
+  }
+};
+
 function trySelect(event) {
   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
@@ -474,7 +554,30 @@ window.addEventListener("resize", () => {
 
 export default function MaterialSelect() {
   const webViewRef = useRef<WebView>(null);
-  const { detectedWalls } = useLocalSearchParams<{ detectedWalls?: string }>();
+  const { detectedWalls, wallpaperArea, wallpaperBase64, wallpaperRepeat } =
+    useLocalSearchParams<{
+      detectedWalls?: string;
+      wallpaperArea?: string;
+      wallpaperBase64?: string;
+      wallpaperRepeat?: string;
+    }>();
+
+  // wallpaper-analyze에서 돌아왔을 때 텍스처 자동 적용
+  useEffect(() => {
+    if (!wallpaperArea || !wallpaperBase64) return;
+    const repeat = Number(wallpaperRepeat ?? "4");
+    setWallTextures((prev) => ({ ...prev, [wallpaperArea]: wallpaperBase64 }));
+    setTextureRepeat((prev) => ({ ...prev, [wallpaperArea]: repeat }));
+    setModeTab("wallpaper");
+
+    const timer = setTimeout(() => {
+      webViewRef.current?.injectJavaScript(`
+        window.setAreaTexture("${wallpaperArea}", "${wallpaperBase64}", ${repeat});
+        true;
+      `);
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [wallpaperArea, wallpaperBase64, wallpaperRepeat]);
 
   const wallCount = Math.min(3, Math.max(1, Number(detectedWalls ?? "3") || 3));
   const maxPointWalls = wallCount === 1 ? 0 : wallCount === 2 ? 1 : 2;
@@ -492,6 +595,67 @@ export default function MaterialSelect() {
 
   const [selectedArea, setSelectedArea] = useState<Area>("allWalls");
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [modeTab, setModeTab] = useState<"color" | "wallpaper" | "recommend">("color");
+  const [quizStep, setQuizStep] = useState<"idle" | "tone" | "style" | "result">("idle");
+  const [quizTone, setQuizTone] = useState<string>("");
+  const [quizStyle, setQuizStyle] = useState<string>("");
+  const [wallTextures, setWallTextures] = useState<Partial<Record<Area, string>>>({});
+
+  // 설문 결과 기반 추천 조합 생성
+  const getQuizRecommendations = () => {
+    const isWarm = quizTone === "웜톤";
+    const isCool = quizTone === "쿨톤";
+    if (quizStyle === "모던") {
+      return [
+        { id: "q1", tag: "모던 그레이", desc: "세련된 대비감의 모던 조합", colors: { allWalls: "#cfcfc9", wall1: "#cfcfc9", wall2: "#cfcfc9", wall3: "#cfcfc9", wall4: "#cfcfc9", floor: "#4a4a4a", moldingTop: "#ffffff", moldingBottom: "#ffffff" }, preview: ["#cfcfc9", "#4a4a4a", "#ffffff"] },
+        { id: "q2", tag: "모던 화이트", desc: "깔끔한 화이트 베이스 모던 조합", colors: { allWalls: "#f0f0f0", wall1: "#f0f0f0", wall2: "#f0f0f0", wall3: "#f0f0f0", wall4: "#f0f0f0", floor: "#b0a898", moldingTop: "#f8f8f8", moldingBottom: "#f8f8f8" }, preview: ["#f0f0f0", "#b0a898", "#f8f8f8"] },
+      ];
+    }
+    if (quizStyle === "빈티지") {
+      return [
+        { id: "q3", tag: "빈티지 웜톤", desc: "레트로한 따뜻한 빈티지 조합", colors: { allWalls: "#ddd5c4", wall1: "#ddd5c4", wall2: "#ddd5c4", wall3: "#ddd5c4", wall4: "#ddd5c4", floor: "#8b6f4e", moldingTop: "#eeebe4", moldingBottom: "#eeebe4" }, preview: ["#ddd5c4", "#8b6f4e", "#eeebe4"] },
+      ];
+    }
+    // 내추럴 or 기본
+    return isWarm
+      ? [{ id: "q4", tag: "내추럴 웜톤", desc: "따뜻한 베이지 내추럴 조합", colors: { allWalls: "#eee3ce", wall1: "#eee3ce", wall2: "#eee3ce", wall3: "#eee3ce", wall4: "#eee3ce", floor: "#b98b5b", moldingTop: "#f7f4ee", moldingBottom: "#f7f4ee" }, preview: ["#eee3ce", "#b98b5b", "#f7f4ee"] }]
+      : [{ id: "q5", tag: "내추럴 쿨톤", desc: "시원하고 차분한 내추럴 조합", colors: { allWalls: "#e8e8e4", wall1: "#e8e8e4", wall2: "#e8e8e4", wall3: "#e8e8e4", wall4: "#e8e8e4", floor: "#9a9a90", moldingTop: "#f5f5f3", moldingBottom: "#f5f5f3" }, preview: ["#e8e8e4", "#9a9a90", "#f5f5f3"] }];
+  };
+  const [textureRepeat, setTextureRepeat] = useState<Record<string, number>>({});
+
+  const pickWallpaper = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0].base64) {
+      const base64 = `data:image/jpeg;base64,${result.assets[0].base64}`;
+      const repeat = textureRepeat[selectedArea] ?? 3;
+
+      setWallTextures({ ...wallTextures, [selectedArea]: base64 });
+
+      webViewRef.current?.injectJavaScript(`
+        window.setAreaTexture("${selectedArea}", "${base64}", ${repeat});
+        true;
+      `);
+    }
+  };
+
+  const changeRepeat = (delta: number) => {
+    const current = textureRepeat[selectedArea] ?? 3;
+    const next = Math.max(1, Math.min(8, current + delta));
+    setTextureRepeat({ ...textureRepeat, [selectedArea]: next });
+
+    if (wallTextures[selectedArea]) {
+      webViewRef.current?.injectJavaScript(`
+        window.setTextureRepeat("${selectedArea}", ${next});
+        true;
+      `);
+    }
+  };
   const [pointWalls, setPointWalls] = useState<Area[]>([]);
 
   const [colors, setColors] = useState<Record<Area, string>>({
@@ -702,79 +866,302 @@ export default function MaterialSelect() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>추천 조합</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-          {RECOMMENDATIONS.map((rec) => (
+        {/* 모드 탭 */}
+        <View style={styles.modeTabs}>
+          {[
+            { key: "color", label: "색상" },
+            { key: "wallpaper", label: "벽지 사진" },
+            { key: "recommend", label: "추천" },
+          ].map((tab) => (
             <TouchableOpacity
-              key={rec.id}
-              style={styles.recCard}
-              onPress={() => applyRecommendation(rec)}
+              key={tab.key}
+              style={[styles.modeTab, modeTab === tab.key && styles.modeTabActive]}
+              onPress={() => setModeTab(tab.key as any)}
             >
-              <Text style={styles.recTag}>{rec.tag}</Text>
-              <Text style={styles.recDesc}>{rec.desc}</Text>
-              <View style={styles.recPreview}>
-                {rec.preview.map((c, i) => (
-                  <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
-                ))}
-                <Text style={styles.recApply}>적용 →</Text>
-              </View>
+              <Text style={[styles.modeTabText, modeTab === tab.key && styles.modeTabTextActive]}>
+                {tab.label}
+              </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-
-        {/* 사용자 취향 기반 추천 섹션 */}
-        <View style={styles.preferenceHeader}>
-          <Text style={styles.sectionTitle}>내 취향 기반 추천</Text>
-          <View style={styles.preferenceBadgeRow}>
-            <View style={styles.preferenceBadge}>
-              <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.tone}</Text>
-            </View>
-            <View style={styles.preferenceBadge}>
-              <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.style}</Text>
-            </View>
-          </View>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
-          {USER_RECOMMENDATIONS.map((rec) => (
+
+        {/* 색상 탭 */}
+        {modeTab === "color" && (
+          <View style={styles.modeContent}>
+            <Text style={styles.sectionTitle}>{getAreaName(selectedArea)} 색상 선택</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {colorOptions.map((color) => (
+                <TouchableOpacity
+                  key={color.name}
+                  style={styles.colorItem}
+                  onPress={() => selectColor(color.value)}
+                >
+                  <View
+                    style={[
+                      styles.colorCircle,
+                      { backgroundColor: color.value },
+                      colors[selectedArea] === color.value && styles.selectedColor,
+                    ]}
+                  />
+                  <Text style={styles.colorName}>{color.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* 벽지 사진 탭 */}
+        {modeTab === "wallpaper" && (
+          <View style={styles.modeContent}>
+            <Text style={styles.sectionTitle}>벽지 사진으로 적용하기</Text>
+            <Text style={styles.wallpaperDesc}>사진을 올리면 AI가 패턴을 분석해 벽면에 적용해요.</Text>
             <TouchableOpacity
-              key={rec.id}
-              style={styles.recCard}
-              onPress={() => applyRecommendation(rec)}
+              style={styles.wallpaperUploadBtn}
+              onPress={() =>
+                router.push({
+                  pathname: "/wallpaper-analyze",
+                  params: { area: selectedArea, detectedWalls: String(wallCount) },
+                } as any)
+              }
             >
-              <Text style={styles.recTag}>{rec.tag}</Text>
-              <Text style={styles.recDesc}>{rec.desc}</Text>
-              <View style={styles.recPreview}>
-                {rec.preview.map((c, i) => (
-                  <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
-                ))}
-                <Text style={styles.recApply}>적용 →</Text>
+              <Text style={styles.wallpaperUploadText}>
+                {wallTextures[selectedArea] ? "다른 벽지 사진으로 변경" : "+ 벽지 사진 올리기"}
+              </Text>
+            </TouchableOpacity>
+            {wallTextures[selectedArea] && (
+              <View style={styles.repeatControl}>
+                <Text style={styles.repeatLabel}>패턴 크기</Text>
+                <View style={styles.repeatButtons}>
+                  <TouchableOpacity style={styles.repeatBtn} onPress={() => changeRepeat(1)}>
+                    <Text style={styles.repeatBtnText}>작게 −</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.repeatValue}>{textureRepeat[selectedArea] ?? 3}</Text>
+                  <TouchableOpacity style={styles.repeatBtn} onPress={() => changeRepeat(-1)}>
+                    <Text style={styles.repeatBtnText}>크게 +</Text>
+                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity
+                  style={styles.wallpaperResetBtn}
+                  onPress={() => {
+                    const newTextures = { ...wallTextures };
+                    delete newTextures[selectedArea];
+                    setWallTextures(newTextures);
+                    selectColor(colors[selectedArea]);
+                  }}
+                >
+                  <Text style={styles.wallpaperResetText}>색상으로 되돌리기</Text>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+            )}
+          </View>
+        )}
 
-        <Text style={styles.sectionTitle}>
-          {getAreaName(selectedArea)} 마감재 선택
-        </Text>
+        {/* 추천 탭 */}
+        {modeTab === "recommend" && (
+          <View style={styles.modeContent}>
+            <Text style={styles.sectionTitle}>추천 조합</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 20 }}>
+              {RECOMMENDATIONS.map((rec) => (
+                <TouchableOpacity
+                  key={rec.id}
+                  style={styles.recCard}
+                  onPress={() => applyRecommendation(rec)}
+                >
+                  <Text style={styles.recTag}>{rec.tag}</Text>
+                  <Text style={styles.recDesc}>{rec.desc}</Text>
+                  <View style={styles.recPreview}>
+                    {rec.preview.map((c, i) => (
+                      <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                    ))}
+                    <Text style={styles.recApply}>적용 →</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {colorOptions.map((color) => (
-            <TouchableOpacity
-              key={color.name}
-              style={styles.colorItem}
-              onPress={() => selectColor(color.value)}
-            >
-              <View
-                style={[
-                  styles.colorCircle,
-                  { backgroundColor: color.value },
-                  colors[selectedArea] === color.value && styles.selectedColor,
-                ]}
-              />
-              <Text style={styles.colorName}>{color.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+            {HAS_PREVIOUS_DESIGNS ? (
+              <>
+                {/* 시안 이력 있는 사용자 — 취향 기반 추천 */}
+                <View style={styles.preferenceHeader}>
+                  <Text style={styles.sectionTitle}>내 취향 기반 추천</Text>
+                  <View style={styles.preferenceBadgeRow}>
+                    <View style={styles.preferenceBadge}>
+                      <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.tone}</Text>
+                    </View>
+                    <View style={styles.preferenceBadge}>
+                      <Text style={styles.preferenceBadgeText}>{USER_PREFERENCE.style}</Text>
+                    </View>
+                  </View>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                  {USER_RECOMMENDATIONS.map((rec) => (
+                    <TouchableOpacity
+                      key={rec.id}
+                      style={styles.recCard}
+                      onPress={() => applyRecommendation(rec)}
+                    >
+                      <Text style={styles.recTag}>{rec.tag}</Text>
+                      <Text style={styles.recDesc}>{rec.desc}</Text>
+                      <View style={styles.recPreview}>
+                        {rec.preview.map((c, i) => (
+                          <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                        ))}
+                        <Text style={styles.recApply}>적용 →</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {/* 내 취향 더 알아보기 */}
+                <TouchableOpacity
+                  style={styles.quizLinkBtn}
+                  onPress={() => { setQuizStep("tone"); }}
+                >
+                  <Text style={styles.quizLinkText}>내 취향 더 알아보기 →</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                {/* 시안 이력 없는 사용자 — 취향 설문 */}
+                <View style={styles.quizBox}>
+                  <Text style={styles.quizTitle}>내 취향 알아보기</Text>
+                  <Text style={styles.quizDesc}>간단한 선택으로 나에게 맞는 마감재를 추천해드려요.</Text>
+
+                  {quizStep === "idle" && (
+                    <TouchableOpacity style={styles.quizStartBtn} onPress={() => setQuizStep("tone")}>
+                      <Text style={styles.quizStartText}>시작하기</Text>
+                    </TouchableOpacity>
+                  )}
+
+                  {quizStep === "tone" && (
+                    <View>
+                      <Text style={styles.quizQuestion}>선호하는 색상 계열은?</Text>
+                      <View style={styles.quizOptions}>
+                        {["웜톤", "쿨톤", "무채색"].map((t) => (
+                          <TouchableOpacity
+                            key={t}
+                            style={[styles.quizOption, quizTone === t && styles.quizOptionActive]}
+                            onPress={() => { setQuizTone(t); setQuizStep("style"); }}
+                          >
+                            <Text style={[styles.quizOptionText, quizTone === t && styles.quizOptionTextActive]}>{t}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {quizStep === "style" && (
+                    <View>
+                      <Text style={styles.quizQuestion}>좋아하는 인테리어 스타일은?</Text>
+                      <View style={styles.quizOptions}>
+                        {["내추럴", "모던", "빈티지"].map((s) => (
+                          <TouchableOpacity
+                            key={s}
+                            style={[styles.quizOption, quizStyle === s && styles.quizOptionActive]}
+                            onPress={() => { setQuizStyle(s); setQuizStep("result"); }}
+                          >
+                            <Text style={[styles.quizOptionText, quizStyle === s && styles.quizOptionTextActive]}>{s}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {quizStep === "result" && (
+                    <View>
+                      <Text style={styles.quizResultLabel}>"{quizTone} · {quizStyle}" 취향에 맞는 추천이에요</Text>
+                      {getQuizRecommendations().map((rec) => (
+                        <TouchableOpacity
+                          key={rec.id}
+                          style={styles.quizRecCard}
+                          onPress={() => applyRecommendation(rec as any)}
+                        >
+                          <View style={styles.quizRecInfo}>
+                            <Text style={styles.recTag}>{rec.tag}</Text>
+                            <Text style={styles.recDesc}>{rec.desc}</Text>
+                            <View style={styles.recPreview}>
+                              {rec.preview.map((c, i) => (
+                                <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                              ))}
+                            </View>
+                          </View>
+                          <Text style={styles.recApply}>적용 →</Text>
+                        </TouchableOpacity>
+                      ))}
+                      <TouchableOpacity style={styles.quizRetryBtn} onPress={() => { setQuizStep("tone"); setQuizTone(""); setQuizStyle(""); }}>
+                        <Text style={styles.quizRetryText}>다시 선택하기</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </>
+            )}
+
+            {/* 취향 더 알아보기 모달형 설문 — 시안 있는 사용자 */}
+            {HAS_PREVIOUS_DESIGNS && quizStep !== "idle" && (
+              <View style={styles.quizBox}>
+                <Text style={styles.quizTitle}>취향 더 알아보기</Text>
+                {quizStep === "tone" && (
+                  <View>
+                    <Text style={styles.quizQuestion}>선호하는 색상 계열은?</Text>
+                    <View style={styles.quizOptions}>
+                      {["웜톤", "쿨톤", "무채색"].map((t) => (
+                        <TouchableOpacity
+                          key={t}
+                          style={[styles.quizOption, quizTone === t && styles.quizOptionActive]}
+                          onPress={() => { setQuizTone(t); setQuizStep("style"); }}
+                        >
+                          <Text style={[styles.quizOptionText, quizTone === t && styles.quizOptionTextActive]}>{t}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {quizStep === "style" && (
+                  <View>
+                    <Text style={styles.quizQuestion}>좋아하는 인테리어 스타일은?</Text>
+                    <View style={styles.quizOptions}>
+                      {["내추럴", "모던", "빈티지"].map((s) => (
+                        <TouchableOpacity
+                          key={s}
+                          style={[styles.quizOption, quizStyle === s && styles.quizOptionActive]}
+                          onPress={() => { setQuizStyle(s); setQuizStep("result"); }}
+                        >
+                          <Text style={[styles.quizOptionText, quizStyle === s && styles.quizOptionTextActive]}>{s}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+                {quizStep === "result" && (
+                  <View>
+                    <Text style={styles.quizResultLabel}>"{quizTone} · {quizStyle}" 추가 추천이에요</Text>
+                    {getQuizRecommendations().map((rec) => (
+                      <TouchableOpacity
+                        key={rec.id}
+                        style={styles.quizRecCard}
+                        onPress={() => applyRecommendation(rec as any)}
+                      >
+                        <View style={styles.quizRecInfo}>
+                          <Text style={styles.recTag}>{rec.tag}</Text>
+                          <Text style={styles.recDesc}>{rec.desc}</Text>
+                          <View style={styles.recPreview}>
+                            {rec.preview.map((c, i) => (
+                              <View key={i} style={[styles.recDot, { backgroundColor: c, borderColor: c === "#ffffff" ? "#ddd" : c }]} />
+                            ))}
+                          </View>
+                        </View>
+                        <Text style={styles.recApply}>적용 →</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity style={styles.quizRetryBtn} onPress={() => { setQuizStep("idle"); setQuizTone(""); setQuizStyle(""); }}>
+                      <Text style={styles.quizRetryText}>닫기</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
 
         <View style={styles.summaryBox}>
           <Text style={styles.summaryTitle}>선택한 마감재</Text>
@@ -1038,6 +1425,216 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: "#222",
     flex: 1,
+  },
+  modeTabs: {
+    flexDirection: "row",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  modeTab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  modeTabActive: {
+    backgroundColor: "#222",
+  },
+  modeTabText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#999",
+  },
+  modeTabTextActive: {
+    color: "white",
+  },
+  modeContent: {
+    marginBottom: 8,
+  },
+  quizLinkBtn: {
+    padding: 12,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    borderRadius: 10,
+    backgroundColor: "white",
+    marginBottom: 8,
+  },
+  quizLinkText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  quizBox: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 18,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  quizTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 4,
+  },
+  quizDesc: {
+    fontSize: 12,
+    color: "#777",
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  quizStartBtn: {
+    backgroundColor: "#222",
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+  },
+  quizStartText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  quizQuestion: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 12,
+  },
+  quizOptions: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+  },
+  quizOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    backgroundColor: "#f3f5f7",
+  },
+  quizOptionActive: {
+    backgroundColor: "#222",
+    borderColor: "#222",
+  },
+  quizOptionText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#555",
+  },
+  quizOptionTextActive: {
+    color: "white",
+  },
+  quizResultLabel: {
+    fontSize: 12,
+    color: "#777",
+    marginBottom: 12,
+    fontWeight: "bold",
+  },
+  quizRecCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f3f5f7",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 8,
+  },
+  quizRecInfo: {
+    flex: 1,
+  },
+  quizRetryBtn: {
+    alignItems: "center",
+    padding: 10,
+    marginTop: 4,
+  },
+  quizRetryText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "bold",
+  },
+  wallpaperSection: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  wallpaperTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#222",
+    marginBottom: 4,
+  },
+  wallpaperDesc: {
+    fontSize: 12,
+    color: "#999",
+    marginBottom: 12,
+  },
+  wallpaperUploadBtn: {
+    backgroundColor: "#222",
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  wallpaperUploadText: {
+    color: "white",
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  repeatControl: {
+    backgroundColor: "#f3f5f7",
+    borderRadius: 10,
+    padding: 12,
+  },
+  repeatLabel: {
+    fontSize: 12,
+    color: "#777",
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  repeatButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    marginBottom: 10,
+  },
+  repeatBtn: {
+    backgroundColor: "white",
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+  },
+  repeatBtnText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  repeatValue: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#222",
+    minWidth: 30,
+    textAlign: "center",
+  },
+  wallpaperResetBtn: {
+    alignItems: "center",
+    paddingVertical: 6,
+  },
+  wallpaperResetText: {
+    fontSize: 12,
+    color: "#999",
+    fontWeight: "bold",
   },
   nextButton: {
     backgroundColor: "#222",

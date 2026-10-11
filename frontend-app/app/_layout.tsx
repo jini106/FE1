@@ -16,11 +16,7 @@ export default function RootLayout() {
       <Stack.Screen name="result" options={{ headerShown: false }} />
       <Stack.Screen name="area-edit" options={{ headerShown: false }} />
       <Stack.Screen name="image-editor" options={{ headerShown: false }} />
-      <Stack.Screen name="saved-designs" options={{ headerShown: false }} />
-      <Stack.Screen name="compare-designs" options={{ headerShown: false }} />
-      <Stack.Screen name="mypage" options={{ headerShown: false }} />
-      <Stack.Screen name="design-option" options={{ headerShown: false }} />
-      <Stack.Screen name="ai-recommend" options={{ headerShown: false }} />
+      <Stack.Screen name="wallpaper-analyze" options={{ headerShown: false }} />
     </Stack>
   );
 }
