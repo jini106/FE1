@@ -13,7 +13,6 @@ import {
 
 // 더미 데이터 — 서버 연동 시 API 호출로 교체
 const USER_PROFILE = {
-  name: "김지니",
   email: "jini@example.com",
 };
 
@@ -62,10 +61,9 @@ export default function MyPage() {
         {/* 프로필 */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{USER_PROFILE.name[0]}</Text>
+            <Text style={styles.avatarText}>M</Text>
           </View>
           <View>
-            <Text style={styles.profileName}>{USER_PROFILE.name}</Text>
             <Text style={styles.profileEmail}>{USER_PROFILE.email}</Text>
           </View>
         </View>
@@ -113,7 +111,13 @@ export default function MyPage() {
           </View>
         </View>
 
-
+        {/* 취향 기반 추천으로 이동 */}
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => router.push("/material-select" as any)}
+        >
+          <Text style={styles.linkButtonText}>취향 기반 추천 보러 가기 →</Text>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* 환경설정 모달 */}
@@ -222,7 +226,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: { color: "white", fontSize: 22, fontWeight: "bold" },
-  profileName: { fontSize: 17, fontWeight: "bold", color: "#222", marginBottom: 4 },
   profileEmail: { fontSize: 13, color: "#999" },
   sectionTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 14, color: "#222" },
   card: {
@@ -243,17 +246,15 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 15, fontWeight: "bold", color: "#222" },
   divider: { height: 1, backgroundColor: "#f0f0f0", marginVertical: 14 },
   badgeSection: {},
-  cardLabel: { fontSize: 13, color: "#222", marginBottom: 10, fontWeight: "bold" },
+  cardLabel: { fontSize: 13, color: "#999", marginBottom: 10, fontWeight: "bold" },
   badgeRow: { flexDirection: "row", gap: 8 },
   badge: {
-    backgroundColor: "white",
+    backgroundColor: "#222",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    borderWidth: 1.5,
-    borderColor: "#222",
   },
-  badgeText: { color: "#222", fontSize: 13, fontWeight: "bold" },
+  badgeText: { color: "white", fontSize: 13, fontWeight: "bold" },
   colorSection: {},
   colorRow: { flexDirection: "row", gap: 10 },
   colorItem: { alignItems: "center", gap: 6, flex: 1 },
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1,
   },
-  colorName: { fontSize: 10, color: "#222", textAlign: "center" },
+  colorName: { fontSize: 10, color: "#777", textAlign: "center" },
   linkButton: {
     backgroundColor: "white",
     borderRadius: 12,

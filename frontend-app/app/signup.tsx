@@ -13,13 +13,12 @@ import {
 } from "react-native";
 
 export default function Signup() {
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordCheck, setPasswordCheck] = useState("");
 
   const handleSignup = () => {
-    if (!name || !email || !password || !passwordCheck) {
+    if (!email || !password || !passwordCheck) {
       Alert.alert("안내", "모든 항목을 입력해주세요.");
       return;
     }
@@ -33,6 +32,11 @@ export default function Signup() {
     router.push("/main" as any);
   };
 
+  const handleGoogleSignup = () => {
+    // TODO: 구글 OAuth 연동 (현재는 더미)
+    Alert.alert("안내", "구글 간편 회원가입은 준비 중입니다.");
+  };
+
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
@@ -41,16 +45,11 @@ export default function Signup() {
 
         <TextInput
           style={styles.input}
-          placeholder="이름"
-          value={name}
-          onChangeText={setName}
-        />
-
-        <TextInput
-          style={styles.input}
           placeholder="이메일"
           value={email}
           onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <TextInput
@@ -79,28 +78,14 @@ export default function Signup() {
           <View style={styles.line} />
         </View>
 
-        <View style={styles.snsRow}>
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={require("../assets/images/google.png")}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={require("../assets/images/kakao.png")}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.socialButton}>
-            <Image
-              source={require("../assets/images/naver.png")}
-              style={styles.socialIcon}
-            />
-          </TouchableOpacity>
-        </View>
+        {/* 구글 간편 회원가입 */}
+        <TouchableOpacity style={styles.googleButton} onPress={handleGoogleSignup}>
+          <Image
+            source={require("../assets/images/google.png")}
+            style={styles.googleIcon}
+          />
+          <Text style={styles.googleButtonText}>Google로 계속하기</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push("/login" as any)}>
           <Text style={styles.link}>이미 계정이 있나요? 로그인</Text>
@@ -162,26 +147,27 @@ const styles = StyleSheet.create({
     color: "#777",
     fontSize: 13,
   },
-  snsRow: {
+  googleButton: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 20,
-    marginTop: 4,
-  },
-  socialButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: "white",
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "white",
     borderWidth: 1,
     borderColor: "#ddd",
+    borderRadius: 10,
+    padding: 14,
+    gap: 10,
+    marginBottom: 4,
   },
-  socialIcon: {
-    width: 30,
-    height: 30,
+  googleIcon: {
+    width: 22,
+    height: 22,
     resizeMode: "contain",
+  },
+  googleButtonText: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#222",
   },
   link: {
     textAlign: "center",
